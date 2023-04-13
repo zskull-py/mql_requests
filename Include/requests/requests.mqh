@@ -23,7 +23,7 @@ string nill = "";
 	DWORD InternetAttemptConnect(DWORD dwReserved);
 	HINTERNET InternetOpenW(LPCTSTR lpszAgent, DWORD dwAccessType, LPCTSTR lpszProxyName, LPCTSTR lpszProxyBypass, DWORD dwFlags);
 	HINTERNET InternetConnectW(HINTERNET hInternet, LPCTSTR lpszServerName, INTERNET_PORT nServerPort, LPCTSTR lpszUsername, LPCTSTR lpszPassword, DWORD dwService, DWORD dwFlags, DWORD_PTR dwContext);
-	HINTERNET HttpOpenRequestW(HINTERNET hConnect, LPCTSTR lpszVerb, LPCTSTR lpszObjectName, LPCTSTR lpszVersion, LPCTSTR lpszReferer, int /*LPCTSTR* */ lplpszAcceptTypes, uint/*DWORD*/ dwFlags, DWORD_PTR dwContext);
+	HINTERNET HttpOpenRequestW(HINTERNET hConnect, LPCTSTR lpszVerb, LPCTSTR lpszObjectName, LPCTSTR lpszVersion, LPCTSTR lpszReferer, string /*LPCTSTR* */ &lplpszAcceptTypes[], uint/*DWORD*/ dwFlags, DWORD_PTR dwContext);
 	BOOL HttpSendRequestW(HINTERNET hRequest, LPCTSTR lpszHeaders, DWORD dwHeadersLength, LPVOID lpOptional[], DWORD dwOptionalLength);
 	HINTERNET InternetOpenUrlW(HINTERNET hInternet, LPCTSTR lpszUrl, LPCTSTR lpszHeaders, DWORD dwHeadersLength, uint/*DWORD*/ dwFlags, DWORD_PTR dwContext);
 	BOOL InternetReadFile(HINTERNET hFile, LPVOID lpBuffer[], DWORD dwNumberOfBytesToRead, LPDWORD lpdwNumberOfBytesRead);
@@ -75,7 +75,7 @@ public:
     bool check_dll(string &error) {
         error = "";
 
-        if(!IsDllsAllowed()) {
+        if(!TerminalInfoInteger(TERMINAL_DLLS_ALLOWED)) {
             error = "requests: ERROR It is necessary to allow the use of DLL in the expert settings";
             Comment(error);
             return(false);
@@ -221,8 +221,9 @@ public:
 
         uint flags = INTERNET_FLAG_KEEP_CONNECTION|INTERNET_FLAG_RELOAD|INTERNET_FLAG_PRAGMA_NOCACHE;
 	    if (port == 443) flags |= INTERNET_FLAG_SECURE;
-
-	    h_request = HttpOpenRequestW(h_connect, method, path, http_version, nill, 0, flags, 0);
+       
+       string accepts[] = {};
+	    h_request = HttpOpenRequestW(h_connect, method, path, http_version, nill, accepts, flags, 0);
 	    if (h_request <= 0) {
 	        error = "requests: ERROR HttpOpenRequestW";
 	        Print(error);
@@ -238,14 +239,14 @@ public:
             trying++;
             h_send = HttpSendRequestW(h_request, headers, StringLen(headers), data, StringLen(_str_data));
             if (h_send <= 0)  {
-                int err = 0; err = GetLastError(err); Print("requests: ERROR HttpSendRequestW = " + (string)err + " (" + (string)trying + " trying)");
+                int err = 0; err = GetLastError(); Print("requests: ERROR HttpSendRequestW = " + (string)err + " (" + (string)trying + " trying)");
                 if (err != ERROR_INTERNET_INVALID_CA) {
                     int dwFlags;
                     int dwBuffLen = sizeof(dwFlags);
                     InternetQueryOptionW(h_request, INTERNET_OPTION_SECURITY_FLAGS, dwFlags, dwBuffLen);
                     dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA;
                     int res = InternetSetOptionW(h_request, INTERNET_OPTION_SECURITY_FLAGS, dwFlags, sizeof(dwFlags));
-                    if (!res) { Print("requests: ERROR InternetSetOptionW = ", GetLastError(err)); break; }
+                    if (!res) { Print("requests: ERROR InternetSetOptionW = ", GetLastError()); break; }
                 }
                 else break;
             }
